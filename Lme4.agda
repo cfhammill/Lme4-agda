@@ -24,9 +24,8 @@ open import Data.Unit
 open import Data.Float
 
 
-data Row {l} : ∀ (n : ℕ) → Vec (String × Set l) n -> Set (Level.suc l) where
-  []  : Row 0 []
-  _∷_ : ∀ {n : ℕ} {T : Set l} {TS} → (p : String × T) → Row n TS → Row (ℕ.suc n) (((proj₁ p) , T) ∷ TS)
+Row : ∀ {l} {n} → Set (lsuc l)
+Row {l} {n} = Vec (String × ∃ λ (A : Set l) → A) n
 
 rowBind : ∀ {l n m a b} -> Row {l} n a -> Row {l} m b -> Row {l} (n + m) (a Data.Vec.++ b)
 rowBind [] rs = rs
