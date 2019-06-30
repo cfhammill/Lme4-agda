@@ -23,6 +23,8 @@ open import Data.Empty
 open import Data.Unit
 open import Data.Float
 
+Schema : ∀ {l} {n} → Set (lsuc l)
+Schema {l} {n} = Vec (String × Set l) n
 
 Row : ∀ {l} {n} → Set (lsuc l)
 Row {l} {n} = Vec (String × ∃ λ (A : Set l) → A) n
@@ -30,36 +32,30 @@ Row {l} {n} = Vec (String × ∃ λ (A : Set l) → A) n
 rowBind : ∀ {l n m a b} -> Row {l} n a -> Row {l} m b -> Row {l} (n + m) (a Data.Vec.++ b)
 rowBind [] rs = rs
 rowBind (x ∷ xs) rs = x ∷ rowBind xs rs
+Values : ∀ {l} {n} → Set (lsuc l)
+Values {l} {n} = Vec (∃ λ (A : Set l) → A) n
 
 DataFrame : ∀ {l} {m : ℕ} (n : ℕ) -> Vec (String × Set l) m -> Set (Level.suc l)
 DataFrame {l} {m} n TS = Vec (Row m TS) n
+Coding : ∀ {l} {n} → Set (lsuc l)
+Coding {l} {n} = Vec (String × ∃ λ (m : ℕ) → ∃ λ (A : Set l) → A → Vec Float m) n
 
 the : ∀ (t : Set) -> t -> t
 the t x = x
+projectSchema : ∀ {l} {n} → Row {l} {n} → Schema {l} {n}
+projectSchema row = map (λ x → proj₁ x , (proj₁ ∘ proj₂) x) row
 
 test : Row _ _
 test = ("hi" , the (Vec _ _) (1 ∷ [])) ∷ ("there" , 2) ∷ []
+RowTransformer : ∀ {l} {r} {n} → Set (lsuc (l ⊔ r))
+RowTransformer {l} {r} {n} = Vec (String × ∃ λ (A : Set l) → (∃ λ (B : Set r) → A → B)) n
 
 testFrame : DataFrame _ _
 testFrame = test ∷ test ∷ []
 
-data CodedRow : ∀ (n : ℕ) → Vec (String × ℕ) n -> Set where
- [] : CodedRow 0 []
- _∷_ : ∀ {n : ℕ} {len} {NS} → (p : String × (Vec Float len)) → CodedRow n NS → CodedRow (ℕ.suc n) (((proj₁ p) , len) ∷ NS)
 
-data FactorCoding {l} : (n : ℕ) → Vec (String × Set l × ℕ) n -> Set (Level.suc l) where
- [] : FactorCoding 0 []
- _∷_ : ∀ {n} {p} {FCS} {A : Set l} ->
-       (i : (String × (A -> Vec Float p))) -> FactorCoding n FCS -> FactorCoding (ℕ.suc n) (((proj₁ i) , A , p) ∷ FCS)
 
-projectRow : ∀ {l} {n} {ts} -> FactorCoding {l} n ts -> Set (Level.suc l)
-projectRow {_} {n} {ts} rs = Row n (Data.Vec.map (\ { (s , T , _)  -> (s , T) } ) ts)
 
-projectCodedRow : ∀ {l} {n} {ts} -> FactorCoding {l} n ts -> Set
-projectCodedRow {_} {n} {ts} rs = CodedRow n (Data.Vec.map (\ { (s , _ , p)  -> (s , p) } ) ts)
 
-codeFactor : ∀ {l n CS} -> (FC : FactorCoding {l} n CS) -> projectRow FC -> projectCodedRow FC
-codeFactor [] [] = []
-codeFactor ((s , f) ∷ cs) ((_ , fac) ∷ facs) = (s , (f fac)) ∷ codeFactor cs facs
 
 
