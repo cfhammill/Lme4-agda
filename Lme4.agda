@@ -77,4 +77,70 @@ rowCast : ∀ {l} {n} {m} {tgt : Row {l} {n}} →
   Row {l} {n}
 rowCast src prf = proj₁ (rowCast-schema src prf)
 
+data Intercept : Set where
+  Unset : Intercept
+  No    : Intercept
+  Yes   : Intercept
 
+_∧ᵢ_ : Intercept -> Intercept -> Intercept
+Unset ∧ᵢ y = y
+No ∧ᵢ Unset = No
+No ∧ᵢ No = No
+No ∧ᵢ Yes = Yes
+Yes ∧ᵢ y = Yes
+
+data Modelable : Set -> Set where
+  FloatT : Modelable Float
+  FactT  : Modelable String
+
+data Term : ∀ {n : ℕ} {empty : Bool} {intercept : Intercept} ->  (vars : Vec (String × Set) n) -> Set₁ where
+  Var   : ∀ {MT : Set} -> (p : String × Modelable MT) -> Term {_} {false} {Unset} ((proj₁ p , MT)  ∷ [])
+  Plus  : ∀ {b1 b2 i1 i2 n m VA VB} -> Term {n} {b1} {i1} VA -> Term {m} {b2} {i2} VB -> Term {_} {b1 ∧ b2} {i1 ∧ᵢ i2} (VA ++ VB)
+  Mul   : ∀ {b1 b2 i1 i2 n m VA VB} -> Term {n} {b1} {i1} VA -> Term {m} {b2} {i2} VB -> Term {_} {b1 ∧ b2} {i1 ∧ᵢ i2} (VA ++ VB)
+  Colon : ∀ {b1 b2 i1 i2 n m VA VB} -> Term {n} {b1} {i1} VA -> Term {m} {b2} {i2} VB -> Term {_} {b1 ∧ b2} {i1 ∧ᵢ i2} (VA ++ VB)
+  Div   : ∀ {b1 b2 i1 i2 n m VA VB} -> Term {n} {b1} {i1} VA -> Term {m} {b2} {i2} VB -> Term {_} {b1 ∧ b2} {i1 ∧ᵢ i2} (VA ++ VB)
+  +0    : Term {_} {true} {No} []
+  +1    : Term {_} {false} {Yes} []
+
+data BarTerm : ∀ {n : ℕ} {intercept : Intercept} ->  (vars : Vec (String × Set) n) -> Set₁ where
+  Bar : ∀ {n VA i} -> Term {n} {false} {i} VA -> (V : (String × Modelable String)) -> BarTerm {ℕ.suc n} {i} ((proj₁ V , String) ∷ VA)
+
+either : ∀ {a b c} {A : Set a} {B : Set b} {C : Set c}  -> (A -> C) -> (B -> C) -> A ⊎ B -> C
+either f _ (inj₁ x) = f x
+either _ g (inj₂ x) = g x
+
+isEmpty : ∀ {b m nv i} -> Term {m} {b} {i} nv ⊎ BarTerm {m} {i} nv -> Bool
+isEmpty {b} {m} {nv} = either (λ _ -> b) (λ _ -> false)
+
+joinIntercepts : ∀ {i n b nv} -> Intercept ->  Term {n} {b} {i} nv ⊎ BarTerm {n} {i} nv -> Intercept
+joinIntercepts {i} li (inj₁ _) = li ∧ᵢ i
+joinIntercepts li _ = li
+
+data Model : ∀ {n : ℕ} {empty : Bool} {intercept : Intercept} ->  (Vec (String × Set) n) -> Set₁ where
+  Var   : ∀ {MT : Set} -> (p : String × Modelable MT) -> Model {_} {false} {Unset} ((proj₁ p , MT)  ∷ [])
+  Add   : ∀ {b1 b2 i1 i2 n m ov nv} -> Model {n} {b1} {i1} ov -> (T : Term {m} {b2} {i2} nv ⊎ BarTerm {m} {i2} nv) -> Model {n + m} {b1 ∧ isEmpty T} {joinIntercepts i1 T} (ov ++ nv)
+  Plus  : ∀ {b1 b2 i1 i2 n m ov nv} -> Model {n} {b1} {i1} ov -> (T : Term {m} {b2} {i2} nv ⊎ BarTerm {m} {i2} nv) -> Model {n + m} {b1 ∧ isEmpty T} {joinIntercepts i1 T} (ov ++ nv)
+  Mul   : ∀ {b1 b2 i1 i2 n m ov nv} -> Model {n} {b1} {i1} ov -> (T : Term {m} {b2} {i2} nv ⊎ BarTerm {m} {i2} nv) -> Model {n + m} {b1 ∧ isEmpty T} {joinIntercepts i1 T} (ov ++ nv)
+  Colon : ∀ {b1 b2 i1 i2 n m ov nv} -> Model {n} {b1} {i1} ov -> (T : Term {m} {b2} {i2} nv ⊎ BarTerm {m} {i2} nv) -> Model {n + m} {b1 ∧ isEmpty T} {joinIntercepts i1 T} (ov ++ nv)
+  Div   : ∀ {b1 b2 i1 i2 n m ov nv} -> Model {n} {b1} {i1} ov -> (T : Term {m} {b2} {i2} nv ⊎ BarTerm {m} {i2} nv) -> Model {n + m} {b1 ∧ isEmpty T} {joinIntercepts i1 T} (ov ++ nv)
+  +0    : Model {_} {true} {No} []
+  +1    : Model {_} {false} {Yes} []
+
+data lFormula : ∀ {n : ℕ} ->  (vars : Vec (String × Set) n) -> Set₁ where
+  Tilde : ∀ {b1 b2 i1 i2 n m lv rv} -> Term {n} {b1} {i1} lv -> Model {m} {b2} {i2} rv -> lFormula (lv ++ rv)
+
+-- generateModelMatrix : ∀ {n m x} ->
+--   {coding : Vec (String × Set × ℕ) m} ->
+--   lFormula {m} (Data.Vec.map (λ{ (s , T , _) -> (s , T)}) coding) ->
+--   DataFrame n x ->
+--   FactorCoding m coding ->
+--   Vec (Vec Float (sum (Data.Vec.map (λ { (_ , _ , c) -> c }) coding))) n
+-- generateModelMatrix = {!!}
+
+-- generateModelMatrix :
+--   ∀ {m n codes vars} ->
+--   {vars ≡ Data.Vec.map (λ a b _ -> (a , b)) codes} ->
+--   {vars ⊆ things} ->
+--   {somenumber ≡ Data.Vec.foldr (+) (Data.Vec.map (λ _ _ p -> p) codes)} ->
+--   lFormula vars -> FactorCoding m codes -> DataFrame n things -> Vec (Vec Float somenumber) n 
+-- generateModelMatrix = ?
