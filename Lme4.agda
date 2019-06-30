@@ -1,13 +1,28 @@
 module Lme4 where
 
-open import Data.Nat
-open import Data.Vec 
-open import Data.String
-open import Data.Product
-open import Level
+open import Data.Nat hiding (_⊔_)
+open import Data.Vec
+open import Data.String hiding (_++_)
+open import Data.Product hiding (map)
+open import Data.Sum hiding (map)
+open import Data.Fin using (Fin; lower₁)
+open import Level renaming (suc to lsuc)
+open import Data.Bool
+open import Data.Vec.Properties
+open import Data.Vec.Relation.Unary.Any using (index ; here ; there ; satisfied)
+open import Data.Vec.Relation.Unary.Any.Properties
+open import Data.Vec.Relation.Binary.Equality.Propositional
+open import Data.Vec.Membership.Propositional
+open import Data.Vec.Membership.Propositional.Properties
+open import Relation.Binary.PropositionalEquality
+open ≡-Reasoning
+open import Relation.Nullary
+open import Relation.Nullary.Product using (_×-dec_)
+open import Function using (_∋_; typeOf; _∘_)
+open import Data.Empty
+open import Data.Unit
+open import Data.Float
 
-postulate Float : Set
-{-# BUILTIN FLOAT Float #-}
 
 data Row {l} : ∀ (n : ℕ) → Vec (String × Set l) n -> Set (Level.suc l) where
   []  : Row 0 []
